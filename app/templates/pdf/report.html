@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-g">
+    <title>Relatório do Checklist #{{ instance.id }}</title>
+    <style>
+        body { font-family: sans-serif; color: #333; }
+        .container { width: 90%; margin: auto; }
+        .header, .footer { text-align: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; }
+        .header p { margin: 5px 0; color: #555; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .signatures { margin-top: 40px; display: flex; justify-content: space-around; }
+        .signature-box { text-align: center; width: 45%; }
+        .signature-box img { max-height: 80px; border-bottom: 1px solid #000; margin-bottom: 5px; }
+        .signature-box p { margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Relatório de Checklist - #{{ instance.id }}</h1>
+            <p><strong>Checklist:</strong> {{ instance.template.title }}</p>
+            <p><strong>Setor:</strong> {{ instance.template.sector.name }}</p>
+        </div>
+
+        <h3>Detalhes da Execução</h3>
+        <table>
+            <tr>
+                <th>Operador</th>
+                <td>{{ instance.operator.username }}</td>
+                <th>Data de Submissão</th>
+                <td>{{ instance.submission_date.strftime('%d/%m/%Y %H:%M') }}</td>
+            </tr>
+            <tr>
+                <th>Líder (Aprovação)</th>
+                <td>{{ instance.leader.username if instance.leader else 'N/A' }}</td>
+                <th>Data de Aprovação</th>
+                <td>{{ instance.approval_date.strftime('%d/%m/%Y %H:%M') if instance.approval_date else 'N/A' }}</td>
+            </tr>
+             <tr>
+                <th>Status Final</th>
+                <td colspan="3"><strong>{{ instance.status }}</strong></td>
+            </tr>
+        </table>
+
+        <h3>Itens Verificados</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item</th>
+                    <th>Resposta</th>
+                    <th>Comentário</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for response in instance.responses|sort(attribute='item_template_id') %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ response.item_template.question }}</td>
+                    <td>{{ response.response }}</td>
+                    <td>{{ response.comment or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="signatures">
+            <div class="signature-box">
+                {% if instance.operator_signature %}
+                    <img src="{{ url_for('static', filename='signatures/' + instance.operator_signature, _external=True) }}" alt="Assinatura do Operador">
+                {% endif %}
+                <p>_________________________</p>
+                <p>{{ instance.operator.username }} (Operador)</p>
+            </div>
+            <div class="signature-box">
+                {% if instance.leader_signature %}
+                    <img src="{{ url_for('static', filename='signatures/' + instance.leader_signature, _external=True) }}" alt="Assinatura do Líder">
+                {% endif %}
+                <p>_________________________</p>
+                <p>{{ instance.leader.username if instance.leader else '(Aguardando Aprovação)' }} (Líder)</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

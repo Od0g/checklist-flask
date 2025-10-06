@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Histórico de Checklists</h1>
+    
+    <form method="GET" class="mb-4 p-3 border rounded bg-light">
+        <div class="row align-items-end">
+            <div class="col-md-4">
+                <label for="sector_id" class="form-label">Filtrar por Setor:</label>
+                <select name="sector_id" id="sector_id" class="form-select">
+                    <option value="">Todos os Setores</option>
+                    {% for sector in sectors %}
+                        <option value="{{ sector.id }}" {% if sector.id == selected_sector_id %}selected{% endif %}>
+                            {{ sector.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="status" class="form-label">Filtrar por Status:</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">Todos os Status</option>
+                    <option value="Pendente" {% if 'Pendente' == selected_status %}selected{% endif %}>Pendente</option>
+                    <option value="Aprovado" {% if 'Aprovado' == selected_status %}selected{% endif %}>Aprovado</option>
+                    <option value="Reprovado" {% if 'Reprovado' == selected_status %}selected{% endif %}>Reprovado</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="{{ url_for('main.checklist_history') }}" class="btn btn-secondary">Limpar Filtros</a>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="{{ url_for('main.checklist_history') }}" class="btn btn-secondary">Limpar Filtros</a>
+    
+                <a href="{{ url_for('main.export_excel', status=selected_status, sector_id=selected_sector_id) }}" class="btn btn-success">
+                    Exportar para Excel
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Checklist</th>
+                <th>Setor</th>
+                <th>Operador</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for checklist in checklists %}
+            <tr>
+                <td>{{ checklist.submission_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ checklist.template.title }}</td>
+                <td>{{ checklist.template.sector.name }}</td>
+                <td>{{ checklist.operator.username }}</td>
+                <td>
+                    {% if checklist.status == 'Aprovado' %}
+                        <span class="badge bg-success">Aprovado</span>
+                    {% elif checklist.status == 'Reprovado' %}
+                        <span class="badge bg-danger">Reprovado</span>
+                    {% else %}
+                        <span class="badge bg-warning">Pendente</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('main.review_checklist', instance_id=checklist.id) }}" class="btn btn-sm btn-info">Ver</a>
+                    </td>
+                <td>
+                    <a href="{{ url_for('main.review_checklist', instance_id=checklist.id) }}" class="btn btn-sm btn-info">Ver</a>
+                    <a href="{{ url_for('main.export_pdf', instance_id=checklist.id) }}" class="btn btn-sm btn-secondary" target="_blank">PDF</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center">Nenhum checklist encontrado com os filtros aplicados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

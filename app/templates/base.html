@@ -12,6 +12,16 @@
             <a class="navbar-brand" href="{{ url_for('main.index') }}">CheckFlow Pro</a>
             <div class="navbar-nav ms-auto">
                 {% if current_user.is_authenticated %}
+                    {% if current_user.role == 'Administrador' %}
+                        <a class="nav-item nav-link" href="{{ url_for('main.admin_dashboard') }}">Admin</a>
+                    {% elif current_user.role == 'Líder' %}
+                        <a class="nav-item nav-link" href="{{ url_for('main.leader_dashboard') }}">Pendentes</a>
+                    {% endif %}
+                
+                    {% if current_user.role in ['Líder', 'Administrador'] %}
+                        <a class="nav-item nav-link" href="{{ url_for('main.checklist_history') }}">Histórico</a>
+                    {% endif %}
+
                     <a class="nav-item nav-link" href="#">{{ current_user.username }}</a>
                     <a class="nav-item nav-link" href="{{ url_for('main.logout') }}">Logout</a>
                 {% else %}

@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, flash, redirect, url_for, request
+# Linha Correta
+from flask import render_template, flash, redirect, url_for, request, Blueprint, abort, send_file, make_response
+from datetime import datetime
 from flask_login import login_user, logout_user, current_user, login_required
 from .models import db, User, Sector, ChecklistTemplate, ChecklistItemTemplate, ChecklistInstance, ChecklistItemResponse
 from .forms import LoginForm, RegistrationForm, SectorForm, ChecklistTemplateForm, ChecklistItemForm
@@ -12,7 +14,9 @@ import uuid
 import os
 from config import basedir # Importe o 'basedir' do seu config.py
 from .email import send_email
-
+from weasyprint import HTML
+from openpyxl import Workbook
+from openpyxl.writer.excel import save_virtual_workbook
 
 
 
@@ -301,7 +305,7 @@ def leader_dashboard():
 
     return render_template('leader/leader_dashboard.html', checklists=pending_checklists, title='Painel do Líder')
 
-@bp.route('/leader/checklist/<intinstance_id>/review', methods=['GET', 'POST'])
+@bp.route('/leader/checklist/<int:instance_id>/review', methods=['GET', 'POST'])
 @login_required
 @leader_required
 def review_checklist(instance_id):
@@ -335,3 +339,130 @@ def review_checklist(instance_id):
         return redirect(url_for('main.leader_dashboard'))
 
     return render_template('leader/review_checklist.html', instance=instance, title='Revisar Checklist')
+
+
+
+# app/routes.py
+# ... (outras rotas) ...
+
+# --- ROTAS DE HISTÓRICO E RELATÓRIOS ---
+
+@bp.route('/history')
+@login_required
+@leader_required
+def checklist_history():
+    # Inicia a consulta base
+    query = ChecklistInstance.query
+
+    # Pega os parâmetros do filtro da URL (ex: /history?status=Aprovado)
+    status = request.args.get('status')
+    sector_id = request.args.get('sector_id', type=int)
+    # (Adicionaremos filtros de data mais tarde, se necessário)
+
+    if status:
+        query = query.filter(ChecklistInstance.status == status)
+    if sector_id:
+        # Filtra os templates pelo sector_id e depois as instâncias por esses templates
+        template_ids = [t.id for t in ChecklistTemplate.query.filter_by(sector_id=sector_id).all()]
+        query = query.filter(ChecklistInstance.template_id.in_(template_ids))
+
+    # Se o usuário for um Líder (e não um Admin), restringe aos seus setores
+    if current_user.role == 'Líder':
+        managed_sectors_ids = [s.id for s in current_user.sectors]
+        template_ids_leader = [t.id for t in ChecklistTemplate.query.filter(ChecklistTemplate.sector_id.in_(managed_sectors_ids)).all()]
+        query = query.filter(ChecklistInstance.template_id.in_(template_ids_leader))
+
+    all_checklists = query.order_by(ChecklistInstance.submission_date.desc()).all()
+    all_sectors = Sector.query.order_by('name').all()
+
+    return render_template(
+        'history.html',
+        checklists=all_checklists,
+        sectors=all_sectors,
+        selected_status=status,
+        selected_sector_id=sector_id,
+        title='Histórico de Checklists'
+    )
+
+@bp.route('/export/pdf/<int:instance_id>')
+@login_required
+@leader_required
+def export_pdf(instance_id):
+    instance = ChecklistInstance.query.get_or_404(instance_id)
+
+    # Renderiza um template HTML específico para o PDF
+    html_string = render_template('pdf/report.html', instance=instance)
+
+    # Converte o HTML renderizado para PDF em memória
+    pdf_bytes = HTML(string=html_string, base_url=request.base_url).write_pdf()
+
+    # Cria uma resposta HTTP com o PDF para download
+    response = make_response(pdf_bytes)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=checklist_{instance.id}.pdf'
+    
+    return response
+
+@bp.route('/export/excel')
+@login_required
+@leader_required
+def export_excel():
+    # 1. Reutiliza a mesma lógica de filtragem da página de histórico
+    query = ChecklistInstance.query
+    status = request.args.get('status')
+    sector_id = request.args.get('sector_id', type=int)
+
+    if status:
+        query = query.filter(ChecklistInstance.status == status)
+    if sector_id:
+        template_ids = [t.id for t in ChecklistTemplate.query.filter_by(sector_id=sector_id).all()]
+        query = query.filter(ChecklistInstance.template_id.in_(template_ids))
+
+    if current_user.role == 'Líder':
+        managed_sectors_ids = [s.id for s in current_user.sectors]
+        template_ids_leader = [t.id for t in ChecklistTemplate.query.filter(ChecklistTemplate.sector_id.in_(managed_sectors_ids)).all()]
+        query = query.filter(ChecklistInstance.template_id.in_(template_ids_leader))
+
+    checklists_to_export = query.order_by(ChecklistInstance.submission_date.desc()).all()
+
+    # 2. Cria a planilha do Excel em memória
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Relatório de Checklists"
+
+    # 3. Adiciona o cabeçalho
+    headers = [
+        "ID Checklist", "Status", "Data Submissão", "Operador", "Líder Aprovação",
+        "Data Aprovação", "Setor", "Título do Checklist", "ID Item",
+        "Pergunta", "Resposta", "Comentário"
+    ]
+    ws.append(headers)
+
+    # 4. Adiciona os dados de cada checklist e suas respostas
+    for instance in checklists_to_export:
+        for response in instance.responses:
+            row = [
+                instance.id,
+                instance.status,
+                instance.submission_date.strftime('%Y-%m-%d %H:%M:%S'),
+                instance.operator.username,
+                instance.leader.username if instance.leader else '',
+                instance.approval_date.strftime('%Y-%m-%d %H:%M:%S') if instance.approval_date else '',
+                instance.template.sector.name,
+                instance.template.title,
+                response.item_template.id,
+                response.item_template.question,
+                response.response,
+                response.comment
+            ]
+            ws.append(row)
+
+    # 5. Salva a planilha em um buffer de memória e envia como resposta
+    excel_bytes = save_virtual_workbook(wb)
+    
+    return send_file(
+        io.BytesIO(excel_bytes),
+        as_attachment=True,
+        download_name='relatorio_checklists.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
