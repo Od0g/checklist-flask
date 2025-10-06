@@ -23,8 +23,8 @@ class Config:
     MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.googlemail.com'
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS') is not None
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME') # Seu e-mail do Gmail
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD') # Sua Senha de App de 16 dígitos
+    MAIL_USERNAME = os.environ.get('inacioaugusto197@gmail.com') # Seu e-mail do Gmail
+    MAIL_PASSWORD = os.environ.get('12341234') # Sua Senha de App de 16 dígitos
     
     # E-mail do administrador que enviará as notificações
-    ADMINS = ['seu-email-de-admin@example.com']
+    ADMINS = ['inacioaugusto197@icloud.com']
