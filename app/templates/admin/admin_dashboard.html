@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Painel de Administração</h1>
+    <p>Bem-vindo, {{ current_user.username }}.</p>
+    <div class="list-group">
+        <a href="{{ url_for('main.list_sectors') }}" class="list-group-item list-group-item-action">
+            Gerenciar Setores
+        </a>
+        <a href="{{ url_for('main.list_checklists') }}" class="list-group-item list-group-item-action">
+            Gerenciar Modelos de Checklist
+        </a>
+        <a href="#" class="list-group-item list-group-item-action disabled">
+            Gerenciar Usuários (em breve)
+        </a>
+    </div>
+{% endblock %}

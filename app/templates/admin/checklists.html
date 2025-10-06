@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Modelos de Checklist</h1>
+        <a href="{{ url_for('main.create_checklist') }}" class="btn btn-primary">Novo Modelo</a>
+    </div>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Setor</th>
+                <th>Nº de Itens</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for template in templates %}
+            <tr>
+                <td>{{ template.title }}</td>
+                <td>{{ template.sector.name }}</td>
+                <td>{{ template.items|length }}</td>
+                <td>
+                    <a href="{{ url_for('main.checklist_detail', template_id=template.id) }}" class="btn btn-sm btn-info">Ver / Gerenciar Itens</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4">Nenhum modelo de checklist encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

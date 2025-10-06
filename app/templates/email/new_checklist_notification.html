@@ -1,0 +1,20 @@
+<p>Olá,</p>
+<p>
+    Um novo checklist foi preenchido e está aguardando sua aprovação.
+</p>
+<p>
+    <b>Checklist:</b> {{ instance.template.title }}<br>
+    <b>Setor:</b> {{ instance.template.sector.name }}<br>
+    <b>Operador:</b> {{ instance.operator.username }}<br>
+    <b>Data de Submissão:</b> {{ instance.submission_date.strftime('%d/%m/%Y %H:%M') }}
+</p>
+<p>
+    Por favor, clique no link abaixo para revisar e aprovar o checklist:
+</p>
+<p>
+    <a href="{{ approval_url }}">Visualizar Checklist</a>
+</p>
+<p>
+    Atenciosamente,<br>
+    Sistema CheckFlow Pro
+</p>

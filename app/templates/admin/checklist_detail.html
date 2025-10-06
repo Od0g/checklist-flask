@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <a href="{{ url_for('main.list_checklists') }}" class="btn btn-sm btn-outline-secondary mb-3">
+        &larr; Voltar para todos os modelos
+    </a>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>{{ template.title }}</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>Setor:</strong> {{ template.sector.name }}</p>
+            <p><strong>Descrição:</strong> {{ template.description or 'N/A' }}</p>
+            <img src="{{ url_for('main.generate_qrcode', template_id=template.id) }}" alt="QR Code" width="150">
+            <p><small>Aponte a câmera para o QR Code para acessar o checklist.</small></p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Itens do Checklist</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="mb-4 p-3 border rounded">
+                {{ item_form.hidden_tag() }}
+                <div class="input-group">
+                    {{ item_form.question(class="form-control", placeholder="Digite o texto da nova pergunta/item") }}
+                    {{ item_form.submit(class="btn btn-success") }}
+                </div>
+            </form>
+
+            <ul class="list-group">
+                {% for item in template.items %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ item.question }}
+                    <form action="{{ url_for('main.delete_checklist_item', item_id=item.id) }}" method="POST" onsubmit="return confirm('Tem certeza?');">
+                        <input type="submit" value="Excluir" class="btn btn-sm btn-danger">
+                    </form>
+                </li>
+                {% else %}
+                <li class="list-group-item">Nenhum item adicionado ainda.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}
