@@ -5,14 +5,18 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     # Chave secreta para proteger a aplicação contra ataques (CSRF)
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'uma-chave-secreta-muito-dificil-de-adivinhar'
-
-    # Configuração do banco de dados SQLAlchemy
-    # Usa SQLite, que cria um arquivo 'app.db' na raiz do projeto
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI') or \
-        'sqlite:///' + os.path.join(basedir, 'app.db')
-
-    # Desativa um recurso do SQLAlchemy que não usaremos, para economizar recursos
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'Gust@101203'
+    
+    # --- MODIFICAÇÃO AQUI ---
+    # Render irá fornecer uma variável de ambiente chamada DATABASE_URL
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    if DATABASE_URL:
+        # Se estiver no Render, use o PostgreSQL
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    else:
+        # Se estiver rodando localmente, use o SQLite
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'app.db')
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
         # Configurações do Flask-Mail

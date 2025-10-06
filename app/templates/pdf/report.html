@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-g">
+    <meta charset="UTF-8">
     <title>Relatório do Checklist #{{ instance.id }}</title>
     <style>
         body { font-family: sans-serif; color: #333; }
@@ -40,7 +40,7 @@
                 <th>Data de Aprovação</th>
                 <td>{{ instance.approval_date.strftime('%d/%m/%Y %H:%M') if instance.approval_date else 'N/A' }}</td>
             </tr>
-             <tr>
+            <tr>
                 <th>Status Final</th>
                 <td colspan="3"><strong>{{ instance.status }}</strong></td>
             </tr>
@@ -70,15 +70,15 @@
 
         <div class="signatures">
             <div class="signature-box">
-                {% if instance.operator_signature %}
-                    <img src="{{ url_for('static', filename='signatures/' + instance.operator_signature, _external=True) }}" alt="Assinatura do Operador">
+                {% if operator_signature_path %}
+                    <img src="{{ operator_signature_path }}" alt="Assinatura do Operador">
                 {% endif %}
                 <p>_________________________</p>
                 <p>{{ instance.operator.username }} (Operador)</p>
             </div>
             <div class="signature-box">
-                {% if instance.leader_signature %}
-                    <img src="{{ url_for('static', filename='signatures/' + instance.leader_signature, _external=True) }}" alt="Assinatura do Líder">
+                {% if leader_signature_path %}
+                    <img src="{{ leader_signature_path }}" alt="Assinatura do Líder">
                 {% endif %}
                 <p>_________________________</p>
                 <p>{{ instance.leader.username if instance.leader else '(Aguardando Aprovação)' }} (Líder)</p>

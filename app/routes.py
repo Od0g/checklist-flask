@@ -411,13 +411,32 @@ def checklist_history():
 def export_pdf(instance_id):
     instance = ChecklistInstance.query.get_or_404(instance_id)
 
-    # Renderiza um template HTML específico para o PDF
-    html_string = render_template('pdf/report.html', instance=instance)
+    # --- LÓGICA NOVA: CALCULAR CAMINHOS DIRETOS ---
+    operator_signature_path = None
+    if instance.operator_signature:
+        operator_signature_path = os.path.join(
+            basedir, 'app', 'static', 'signatures', instance.operator_signature
+        )
 
-    # Converte o HTML renderizado para PDF em memória
-    pdf_bytes = HTML(string=html_string, base_url=request.base_url).write_pdf()
+    leader_signature_path = None
+    if instance.leader_signature:
+        leader_signature_path = os.path.join(
+            basedir, 'app', 'static', 'signatures', instance.leader_signature
+        )
+    # --- FIM DA LÓGICA NOVA ---
+    
+    # Passamos os caminhos para o template
+    html_string = render_template(
+        'pdf/report.html',
+        instance=instance,
+        operator_signature_path=operator_signature_path,
+        leader_signature_path=leader_signature_path
+    )
 
-    # Cria uma resposta HTTP com o PDF para download
+    # O base_url agora aponta para a nossa pasta 'static' para encontrar o CSS, se necessário
+    pdf_base_url = os.path.join(basedir, 'app', 'static')
+    pdf_bytes = HTML(string=html_string, base_url=pdf_base_url).write_pdf()
+
     response = make_response(pdf_bytes)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'inline; filename=checklist_{instance.id}.pdf'
