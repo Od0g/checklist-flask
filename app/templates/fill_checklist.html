@@ -7,7 +7,7 @@
         <h5 class="text-muted">{{ template.sector.name }}</h5>
     </div>
     <div class="card-body">
-        <form id="checklistForm" method="POST" action="">
+        <form id="checklistForm" method="POST" action="" enctype="multipart/form-data">
             <input type="hidden" name="signature" id="signature_data">
             
             {% for item in template.items %}
@@ -35,6 +35,10 @@
                     <textarea class="form-control" placeholder="Adicionar comentário" name="item_{{ item.id }}_comment" style="height: 70px"></textarea>
                     <label>Comentário (opcional)</label>
                 </div>
+                <div class="mt-2">
+                    <label for="item_{{ item.id }}_photo" class="form-label small">Anexar evidência (opcional):</label>
+                    <input class="form-control form-control-sm" type="file" name="item_{{ item.id }}_photo" id="item_{{ item.id }}_photo" accept="image/*">
+                </div>
             </div>
             {% endfor %}
 
@@ -51,29 +55,27 @@
         </form>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script src="{{ url_for('static', filename='js/signature_pad.umd.min.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', (event) => {
         const canvas = document.getElementById('signature-pad');
         const signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgb(248, 249, 250)' // Cor de fundo do canvas
+            backgroundColor: 'rgb(248, 249, 250)'
         });
 
-        const clearButton = document.getElementById('clear-signature');
-        clearButton.addEventListener('click', function () {
+        document.getElementById('clear-signature').addEventListener('click', function () {
             signaturePad.clear();
         });
 
-        const form = document.getElementById('checklistForm');
-        form.addEventListener('submit', function (e) {
+        document.getElementById('checklistForm').addEventListener('submit', function (e) {
             if (signaturePad.isEmpty()) {
                 alert("Por favor, forneça sua assinatura.");
-                e.preventDefault(); // Impede o envio do formulário
+                e.preventDefault();
             } else {
-                // Pega a assinatura como uma imagem base64 e a coloca no campo hidden
-                const signatureData = signaturePad.toDataURL('image/png');
-                document.getElementById('signature_data').value = signatureData;
+                document.getElementById('signature_data').value = signaturePad.toDataURL('image/png');
             }
         });
     });

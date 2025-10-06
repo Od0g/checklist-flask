@@ -3,15 +3,82 @@
 {% block content %}
     <h1>Painel de Administração</h1>
     <p>Bem-vindo, {{ current_user.username }}.</p>
-    <div class="list-group">
-        <a href="{{ url_for('main.list_sectors') }}" class="list-group-item list-group-item-action">
-            Gerenciar Setores
-        </a>
-        <a href="{{ url_for('main.list_checklists') }}" class="list-group-item list-group-item-action">
-            Gerenciar Modelos de Checklist
-        </a>
-        <a href="#" class="list-group-item list-group-item-action disabled">
-            Gerenciar Usuários (em breve)
-        </a>
+
+    <div class="list-group mb-4">
+        <a href="{{ url_for('main.list_sectors') }}" class="list-group-item list-group-item-action">Gerenciar Setores</a>
+        <a href="{{ url_for('main.list_checklists') }}" class="list-group-item list-group-item-action">Gerenciar Modelos de Checklist</a>
+        <a href="{{ url_for('main.list_users') }}" class="list-group-item list-group-item-action">Gerenciar Usuários</a>
     </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Índice de Conformidade por Setor (%)</div>
+                <div class="card-body">
+                    <canvas id="complianceBySectorChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Top 5 Itens com Mais "Não Conformidades"</div>
+                <div class="card-body">
+                    <canvas id="topNonCompliantItemsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Busca os dados da nossa API
+    fetch("{{ url_for('main.get_dashboard_data') }}")
+        .then(response => response.json())
+        .then(data => {
+            // 2. Renderiza o gráfico de Conformidade por Setor
+            const complianceCtx = document.getElementById('complianceBySectorChart').getContext('2d');
+            new Chart(complianceCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.compliance_by_sector.labels,
+                    datasets: [{
+                        label: '% de Conformidade',
+                        data: data.compliance_by_sector.values,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true, max: 100 } },
+                    indexAxis: 'y',
+                }
+            });
+
+            // 3. Renderiza o gráfico de Top Itens Não Conformes
+            const nonCompliantCtx = document.getElementById('topNonCompliantItemsChart').getContext('2d');
+            new Chart(nonCompliantCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.top_non_compliant_items.labels,
+                    datasets: [{
+                        label: 'Nº de Ocorrências "Não"',
+                        data: data.top_non_compliant_items.values,
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Faz o gráfico ser de barras horizontais
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+        });
+});
+</script>
 {% endblock %}

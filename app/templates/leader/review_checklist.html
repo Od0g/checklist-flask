@@ -11,12 +11,21 @@
         </div>
         <div class="card-body">
             <h4>Respostas do Operador:</h4>
+            
             {% for response in instance.responses|sort(attribute='item_template_id') %}
             <div class="mb-3 p-3 border rounded">
                 <p class="fw-bold">{{ loop.index }}. {{ response.item_template.question }}</p>
                 <p><strong>Resposta:</strong> <span class="badge bg-secondary">{{ response.response }}</span></p>
+                
                 {% if response.comment %}
                     <p><strong>Comentário:</strong> {{ response.comment }}</p>
+                {% endif %}
+                
+                {% if response.photo_evidence %}
+                    <p class="mt-2"><strong>Evidência Fotográfica:</strong></p>
+                    <a href="{{ url_for('static', filename='uploads/evidence/' + response.photo_evidence) }}" target="_blank">
+                        <img src="{{ url_for('static', filename='uploads/evidence/' + response.photo_evidence) }}" alt="Evidência" class="img-fluid img-thumbnail" style="max-height: 200px;">
+                    </a>
                 {% endif %}
             </div>
             {% endfor %}
@@ -48,7 +57,9 @@
         </div>
     </div>
 </form>
+{% endblock %}
 
+{% block scripts %}
 <script src="{{ url_for('static', filename='js/signature_pad.umd.min.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', (event) => {

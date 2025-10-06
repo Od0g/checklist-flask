@@ -3,12 +3,12 @@ from flask import render_template, flash, redirect, url_for, request, Blueprint,
 from datetime import datetime
 from flask_login import login_user, logout_user, current_user, login_required
 from .models import db, User, Sector, ChecklistTemplate, ChecklistItemTemplate, ChecklistInstance, ChecklistItemResponse
-from .forms import LoginForm, RegistrationForm, SectorForm, ChecklistTemplateForm, ChecklistItemForm
+from .forms import LoginForm, RegistrationForm, SectorForm, ChecklistTemplateForm, ChecklistItemForm, UserEditForm
 from functools import wraps
 from flask import abort
 import qrcode
 import io
-from flask import send_file
+from flask import send_file,jsonify
 import base64
 import uuid
 import os
@@ -16,7 +16,8 @@ from config import basedir # Importe o 'basedir' do seu config.py
 from .email import send_email
 from weasyprint import HTML
 from openpyxl import Workbook
-from openpyxl.writer.excel import save_virtual_workbook
+from werkzeug.utils import secure_filename
+from sqlalchemy import func, case
 
 
 
@@ -251,6 +252,26 @@ def fill_checklist(template_id):
         for item in template.items:
             response_value = request.form.get(f'item_{item.id}_response')
             comment_value = request.form.get(f'item_{item.id}_comment')
+
+
+                        # --- NOVA LÓGICA DE UPLOAD DE FOTO ---
+            photo_filename = None
+            photo_file = request.files.get(f'item_{item.id}_photo')
+
+            # Verifica se um arquivo foi enviado e tem um nome
+            if photo_file and photo_file.filename != '':
+                # Garante que o nome do arquivo é seguro
+                safe_filename = secure_filename(photo_file.filename)
+                # Cria um nome único para evitar sobreposição de arquivos
+                photo_filename = f"{uuid.uuid4()}_{safe_filename}"
+                
+                # Define o caminho completo para salvar o arquivo
+                upload_path = os.path.join(basedir, 'app', 'static', 'uploads', 'evidence')
+                os.makedirs(upload_path, exist_ok=True) # Cria a pasta se não existir
+                
+                # Salva o arquivo
+                photo_file.save(os.path.join(upload_path, photo_filename))
+            # --- FIM DA NOVA LÓGICA ---
             
             response = ChecklistItemResponse(
                 response=response_value,
@@ -458,7 +479,9 @@ def export_excel():
             ws.append(row)
 
     # 5. Salva a planilha em um buffer de memória e envia como resposta
-    excel_bytes = save_virtual_workbook(wb)
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    excel_bytes = buffer.getvalue()
     
     return send_file(
         io.BytesIO(excel_bytes),
@@ -466,3 +489,97 @@ def export_excel():
         download_name='relatorio_checklists.xlsx',
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+
+# --- ROTAS PARA GERENCIAR USUÁRIOS ---
+
+@bp.route('/admin/users')
+@login_required
+@admin_required
+def list_users():
+    # Evita que o admin se exclua ou edite por acidente, não incluindo ele mesmo na lista
+    users = User.query.filter(User.id != current_user.id).order_by(User.username).all()
+    return render_template('admin/users.html', users=users, title='Gerenciar Usuários')
+
+@bp.route('/admin/user/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+    form = UserEditForm(obj=user)
+
+    if form.validate_on_submit():
+        # Verifica se o email ou username foram alterados para um que já existe
+        if user.username != form.username.data and User.query.filter_by(username=form.username.data).first():
+            flash('Este nome de usuário já está em uso.', 'danger')
+        elif user.email != form.email.data and User.query.filter_by(email=form.email.data).first():
+            flash('Este email já está em uso.', 'danger')
+        else:
+            user.username = form.username.data
+            user.email = form.email.data
+            user.role = form.role.data
+            db.session.commit()
+            flash('Usuário atualizado com sucesso!', 'success')
+            return redirect(url_for('main.list_users'))
+
+    return render_template('admin/user_form.html', form=form, user=user, title='Editar Usuário')
+
+@bp.route('/admin/user/<int:user_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    # Medida de segurança extra para não se auto-excluir
+    if user.id == current_user.id:
+        flash('Você não pode excluir sua própria conta.', 'danger')
+        return redirect(url_for('main.list_users'))
+    
+    # Adicionar lógica para reatribuir checklists antes de excluir, se necessário.
+    # Por agora, faremos uma exclusão simples.
+    
+    db.session.delete(user)
+    db.session.commit()
+    flash('Usuário excluído com sucesso.', 'success')
+    return redirect(url_for('main.list_users'))
+
+# --- ROTA DE API PARA OS GRÁFICOS DO DASHBOARD ---
+
+@bp.route('/api/dashboard_data')
+@login_required
+@admin_required
+def get_dashboard_data():
+    # 1. Dados para o gráfico de Conformidade por Setor
+    compliance_query = db.session.query(
+        Sector.name,
+        # Calcula a porcentagem de respostas 'Sim'
+        (func.sum(case((ChecklistItemResponse.response == 'Sim', 1), else_=0)) * 100.0 / func.count(ChecklistItemResponse.id))
+    ).join(ChecklistTemplate, Sector.id == ChecklistTemplate.sector_id)\
+     .join(ChecklistInstance, ChecklistTemplate.id == ChecklistInstance.template_id)\
+     .join(ChecklistItemResponse, ChecklistInstance.id == ChecklistItemResponse.instance_id)\
+     .group_by(Sector.name).all()
+    
+    # 2. Dados para o gráfico de Itens com Mais Não Conformidades
+    non_compliant_query = db.session.query(
+        ChecklistItemTemplate.question,
+        func.count(ChecklistItemResponse.id).label('count')
+    ).join(ChecklistItemResponse, ChecklistItemTemplate.id == ChecklistItemResponse.item_template_id)\
+     .filter(ChecklistItemResponse.response == 'Não')\
+     .group_by(ChecklistItemTemplate.question)\
+     .order_by(func.count(ChecklistItemResponse.id).desc())\
+     .limit(5).all()
+
+    # 3. Formata os dados para o formato que o Chart.js espera
+    compliance_data = {
+        'labels': [row[0] for row in compliance_query],
+        'values': [round(row[1], 2) for row in compliance_query]
+    }
+    
+    non_compliant_data = {
+        'labels': [row[0] for row in non_compliant_query],
+        'values': [row[1] for row in non_compliant_query]
+    }
+
+    # 4. Retorna tudo em um único objeto JSON
+    return jsonify({
+        'compliance_by_sector': compliance_data,
+        'top_non_compliant_items': non_compliant_data
+    })

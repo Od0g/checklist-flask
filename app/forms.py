@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField 
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, InputRequired
 from .models import User, Sector
 
 class RegistrationForm(FlaskForm):
@@ -43,3 +43,14 @@ class ChecklistTemplateForm(FlaskForm):
 class ChecklistItemForm(FlaskForm):
     question = StringField('Texto do Item', validators=[DataRequired(), Length(max=500)])
     submit = SubmitField('Adicionar Item')
+
+class UserEditForm(FlaskForm):
+    username = StringField('Nome de Usuário', validators=[DataRequired(), Length(min=4, max=25)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    # O 'InputRequired' garante que uma opção seja selecionada.
+    role = SelectField('Permissão', choices=[
+        ('Operador', 'Operador'),
+        ('Líder', 'Líder'),
+        ('Administrador', 'Administrador')
+    ], validators=[InputRequired()])
+    submit = SubmitField('Salvar Alterações')
