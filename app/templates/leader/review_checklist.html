@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form id="reviewForm" method="POST">
+    <input type="hidden" name="signature" id="signature_data">
+
+    <div class="card">
+        <div class="card-header">
+            <h1>Revisão: {{ instance.template.title }}</h1>
+            <p class="text-muted">Enviado por {{ instance.operator.username }} em {{ instance.submission_date.strftime('%d/%m/%Y %H:%M') }}</p>
+        </div>
+        <div class="card-body">
+            <h4>Respostas do Operador:</h4>
+            {% for response in instance.responses|sort(attribute='item_template_id') %}
+            <div class="mb-3 p-3 border rounded">
+                <p class="fw-bold">{{ loop.index }}. {{ response.item_template.question }}</p>
+                <p><strong>Resposta:</strong> <span class="badge bg-secondary">{{ response.response }}</span></p>
+                {% if response.comment %}
+                    <p><strong>Comentário:</strong> {{ response.comment }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <hr>
+
+            <h4>Assinatura do Operador:</h4>
+            {% if instance.operator_signature %}
+                <img src="{{ url_for('static', filename='signatures/' + instance.operator_signature) }}" alt="Assinatura do Operador" class="img-fluid border rounded mb-3" style="max-height: 150px;">
+            {% else %}
+                <p>Nenhuma assinatura fornecida.</p>
+            {% endif %}
+
+            <hr>
+
+            <h4>Sua Aprovação:</h4>
+            <div class="mt-3 p-3 border rounded">
+                <label class="form-label fw-bold">Sua Assinatura (Líder):</label>
+                <div class="canvas-container bg-light border">
+                    <canvas id="signature-pad" style="width: 100%; height: 200px;"></canvas>
+                </div>
+                <button type="button" id="clear-signature" class="btn btn-sm btn-secondary mt-2">Limpar</button>
+            </div>
+
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" name="action" value="Reprovado" class="btn btn-danger btn-lg">Reprovar</button>
+            <button type="submit" name="action" value="Aprovado" class="btn btn-success btn-lg">Aprovar</button>
+        </div>
+    </div>
+</form>
+
+<script src="{{ url_for('static', filename='js/signature_pad.umd.min.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const canvas = document.getElementById('signature-pad');
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(248, 249, 250)'
+        });
+
+        document.getElementById('clear-signature').addEventListener('click', () => signaturePad.clear());
+
+        document.getElementById('reviewForm').addEventListener('submit', function (e) {
+            if (signaturePad.isEmpty()) {
+                alert("Por favor, forneça sua assinatura para aprovar ou reprovar.");
+                e.preventDefault();
+            } else {
+                document.getElementById('signature_data').value = signaturePad.toDataURL('image/png');
+            }
+        });
+    });
+</script>
+{% endblock %}

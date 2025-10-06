@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Painel do Líder - Checklists Pendentes</h1>
+    <p>Aqui estão os checklists que aguardam sua aprovação.</p>
+
+    <div class="list-group">
+        {% for checklist in checklists %}
+            <a href="{{ url_for('main.review_checklist', instance_id=checklist.id) }}" class="list-group-item list-group-item-action flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ checklist.template.title }}</h5>
+                    <small>{{ checklist.submission_date.strftime('%d/%m/%Y %H:%M') }}</small>
+                </div>
+                <p class="mb-1">
+                    <strong>Setor:</strong> {{ checklist.template.sector.name }} <br>
+                    <strong>Operador:</strong> {{ checklist.operator.username }}
+                </p>
+            </a>
+        {% else %}
+            <div class="alert alert-info">Nenhum checklist pendente no momento.</div>
+        {% endfor %}
+    </div>
+{% endblock %}

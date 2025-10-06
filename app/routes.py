@@ -27,6 +27,13 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def leader_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or (current_user.role not in ['Líder', 'Administrador']):
+            abort(403) # Proibido
+        return f(*args, **kwargs)
+    return decorated_function
 
 @bp.route('/')
 @bp.route('/index')
@@ -255,7 +262,7 @@ def fill_checklist(template_id):
         if leaders:
             leader_emails = [leader.email for leader in leaders]
             # (URL de aprovação será criada no próximo passo, por enquanto usamos um placeholder)
-            approval_url = url_for('main.index', _external=True) 
+            approval_url = url_for('main.review_checklist', instance_id=instance.id, _external=True)
 
             send_email(
                 subject=f'Novo Checklist para Aprovação: {template.title}',
@@ -275,3 +282,56 @@ def fill_checklist(template_id):
 
     # Se for um request GET, apenas exibe a página
     return render_template('fill_checklist.html', template=template, title='Preencher Checklist')
+
+@bp.route('/leader/dashboard')
+@login_required
+@leader_required
+def leader_dashboard():
+    # Pega os IDs dos setores que o líder atual gerencia
+    managed_sectors_ids = [s.id for s in current_user.sectors]
+    
+    # Encontra todos os templates de checklist desses setores
+    checklist_templates_ids = [t.id for t in ChecklistTemplate.query.filter(ChecklistTemplate.sector_id.in_(managed_sectors_ids)).all()]
+
+    # Filtra as instâncias pendentes que correspondem a esses templates
+    pending_checklists = ChecklistInstance.query.filter(
+        ChecklistInstance.template_id.in_(checklist_templates_ids),
+        ChecklistInstance.status == 'Pendente'
+    ).order_by(ChecklistInstance.submission_date.desc()).all()
+
+    return render_template('leader/leader_dashboard.html', checklists=pending_checklists, title='Painel do Líder')
+
+@bp.route('/leader/checklist/<intinstance_id>/review', methods=['GET', 'POST'])
+@login_required
+@leader_required
+def review_checklist(instance_id):
+    instance = ChecklistInstance.query.get_or_404(instance_id)
+
+    # Verificação de segurança: O líder pode revisar este checklist?
+    if instance.template.sector not in current_user.sectors and current_user.role != 'Administrador':
+        abort(403)
+
+    if request.method == 'POST':
+        action = request.form.get('action') # 'Aprovar' ou 'Reprovar'
+        
+        # Salva a assinatura do líder
+        signature_data_url = request.form.get('signature')
+        if signature_data_url:
+            header, encoded = signature_data_url.split(",", 1)
+            data = base64.b64decode(encoded)
+            signature_filename = f"{uuid.uuid4()}.png"
+            signatures_dir = os.path.join(basedir, 'app', 'static', 'signatures')
+            os.makedirs(signatures_dir, exist_ok=True)
+            with open(os.path.join(signatures_dir, signature_filename), "wb") as f:
+                f.write(data)
+            instance.leader_signature = signature_filename
+
+        instance.status = action # 'Aprovado' ou 'Reprovado'
+        instance.approval_date = datetime.utcnow()
+        instance.leader_id = current_user.id
+        
+        db.session.commit()
+        flash(f'Checklist {action.lower()} com sucesso!', 'success')
+        return redirect(url_for('main.leader_dashboard'))
+
+    return render_template('leader/review_checklist.html', instance=instance, title='Revisar Checklist')
