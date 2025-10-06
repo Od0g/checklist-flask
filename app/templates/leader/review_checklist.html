@@ -63,18 +63,22 @@
 <script src="{{ url_for('static', filename='js/signature_pad.umd.min.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', (event) => {
+        // Encontra o canvas com o ID 'signature-pad'
         const canvas = document.getElementById('signature-pad');
         const signaturePad = new SignaturePad(canvas, {
             backgroundColor: 'rgb(248, 249, 250)'
         });
 
+        // Encontra o botão de limpar com o ID 'clear-signature'
         document.getElementById('clear-signature').addEventListener('click', () => signaturePad.clear());
 
+        // Encontra o formulário com o ID 'reviewForm'
         document.getElementById('reviewForm').addEventListener('submit', function (e) {
             if (signaturePad.isEmpty()) {
                 alert("Por favor, forneça sua assinatura para aprovar ou reprovar.");
                 e.preventDefault();
             } else {
+                // Coloca os dados da assinatura no campo oculto com ID 'signature_data'
                 document.getElementById('signature_data').value = signaturePad.toDataURL('image/png');
             }
         });
