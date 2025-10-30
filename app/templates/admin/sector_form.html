@@ -12,6 +12,13 @@
             {{ form.description.label(class="form-label") }}
             {{ form.description(class="form-control") }}
         </div>
+        
+        <div class="mb-3">
+            {{ form.leaders.label(class="form-label") }}
+            {{ form.leaders(class="form-select", size=5) }}
+            <small class="form-text text-muted">Segure Ctrl (ou Cmd em Mac) para selecionar múltiplos líderes.</small>
+        </div>
+
         <div class="mb-3">
             {{ form.submit(class="btn btn-primary") }}
             <a href="{{ url_for('main.list_sectors') }}" class="btn btn-secondary">Cancelar</a>

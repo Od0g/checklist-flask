@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField 
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField, SelectMultipleField 
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, InputRequired
 from .models import User, Sector
 
@@ -31,6 +31,7 @@ class LoginForm(FlaskForm):
 class SectorForm(FlaskForm):
     name = StringField('Nome do Setor', validators=[DataRequired(), Length(min=3, max=100)])
     description = StringField('Descrição (Opcional)', validators=[Length(max=255)])
+    leaders = SelectMultipleField('Líderes Responsáveis', coerce=int)
     submit = SubmitField('Salvar')
 
 class ChecklistTemplateForm(FlaskForm):
